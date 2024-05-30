@@ -1,5 +1,5 @@
 import Post from "../models/post.js";
-import Comment from "../models/comment.js"
+import Comment from "../models/comment.js";
 import { gfs } from "./image-controller.js";
 
 export const createPost = async (request, response) => {
@@ -7,7 +7,7 @@ export const createPost = async (request, response) => {
     const post = await new Post(request.body);
     post.save();
 
-    response.status(200).json({msg:"Blog Posted!!"});
+    response.status(200).json({ msg: "Blog Posted!!" });
   } catch (error) {
     response.status(500).json(error);
   }
@@ -21,12 +21,20 @@ export const updatePost = async (request, response) => {
       response.status(404).json({ msg: "Post not found" });
     }
 
-    if(post.picture && request.body.picture !== post.picture){
-        await gfs.files.deleteMany({filename:post.picture.split("/")[4]})
+    if (post.picture && request.body.picture !== post.picture) {
+      const filename = post.picture.split("/")[4];
+      const file = await gfs.files.findOne({ filename: filename });
+      if (!file) {
+        return response.status(404).json({ msg: "File not found!!" });
+      }
+      await gfs.files.deleteOne({ _id: file._id });
+      await mongoose.connection.db
+        .collection("fs.chunks")
+        .deleteMany({ files_id: file._id });
     }
     await Post.findByIdAndUpdate(request.params.id, { $set: request.body });
 
-    response.status(200).json({msg:"Blog updated successfully!!"});
+    response.status(200).json({ msg: "Blog updated successfully!!" });
   } catch (error) {
     response.status(500).json(error);
   }
@@ -35,13 +43,21 @@ export const updatePost = async (request, response) => {
 export const deletePost = async (request, response) => {
   try {
     const post = await Post.findById(request.params.id);
-    if(post.picture){
-      await gfs.files.deleteMany({ filename: post.picture.split("/")[4] });
+    if (post.picture) {
+      const filename = post.picture.split("/")[4];
+      const file = await gfs.files.findOne({ filename: filename });
+      if (!file) {
+        return response.status(404).json({ msg: "File not found!!" });
+      }
+      await gfs.files.deleteOne({ _id: file._id });
+      await mongoose.connection.db
+        .collection("fs.chunks")
+        .deleteMany({ files_id: file._id });
     }
-    await Comment.deleteMany({postId:post._id})
+    await Comment.deleteMany({ postId: post._id });
     await post.delete();
 
-    response.status(200).json({msg:"Blog deleted successfully!!"});
+    response.status(200).json({ msg: "Blog deleted successfully!!" });
   } catch (error) {
     response.status(500).json(error);
   }
@@ -59,29 +75,29 @@ export const getPost = async (request, response) => {
 
 export const getAllUserPosts = async (request, response) => {
   try {
-    const posts = await Post.find({username:request.user.email});
+    const posts = await Post.find({ username: request.user.email });
     response.status(200).json(posts);
   } catch (error) {
     response.status(500).json(error);
-}
+  }
 };
 
-export const getAllPosts = async(request,response)=>{
-    try {
-        const post = await Post.find({});
-        response.status(200).json(post);
-    } catch (error) {
-        response.status(500).json(error);
-    }
-}
+export const getAllPosts = async (request, response) => {
+  try {
+    const post = await Post.find({});
+    response.status(200).json(post);
+  } catch (error) {
+    response.status(500).json(error);
+  }
+};
 
-export const changeViews = async(request,response)=>{
+export const changeViews = async (request, response) => {
   try {
     const post = await Post.findById(request.params.id);
-    post.views = post.views+1;
+    post.views = post.views + 1;
     post.save();
-    response.status(200).json({msg:"updated views"})
+    response.status(200).json({ msg: "updated views" });
   } catch (error) {
-    response.status(500).json(error)
+    response.status(500).json(error);
   }
-}
+};
