@@ -24,13 +24,12 @@ export const updatePost = async (request, response) => {
     if (post.picture && request.body.picture !== post.picture) {
       const filename = post.picture.split("/")[4];
       const file = await gfs.files.findOne({ filename: filename });
-      if (!file) {
-        return response.status(404).json({ msg: "File not found!!" });
+      if (file) {
+        await gfs.files.deleteOne({ _id: file._id });
+        await mongoose.connection.db
+          .collection("fs.chunks")
+          .deleteMany({ files_id: file._id });
       }
-      await gfs.files.deleteOne({ _id: file._id });
-      await mongoose.connection.db
-        .collection("fs.chunks")
-        .deleteMany({ files_id: file._id });
     }
     await Post.findByIdAndUpdate(request.params.id, { $set: request.body });
 
@@ -46,13 +45,12 @@ export const deletePost = async (request, response) => {
     if (post.picture) {
       const filename = post.picture.split("/")[4];
       const file = await gfs.files.findOne({ filename: filename });
-      if (!file) {
-        return response.status(404).json({ msg: "File not found!!" });
+      if (file) {
+        await gfs.files.deleteOne({ _id: file._id });
+        await mongoose.connection.db
+          .collection("fs.chunks")
+          .deleteMany({ files_id: file._id });
       }
-      await gfs.files.deleteOne({ _id: file._id });
-      await mongoose.connection.db
-        .collection("fs.chunks")
-        .deleteMany({ files_id: file._id });
     }
     await Comment.deleteMany({ postId: post._id });
     await post.delete();

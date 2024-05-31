@@ -35,13 +35,12 @@ export const deleteImage = async (request, response) => {
   try {
     const filename = request.params.filename;
     const file = await gfs.files.findOne({ filename: filename });
-    if (!file) {
-      return response.status(404).json({ msg: "File not found!!" });
+    if (file) {
+      await gfs.files.deleteOne({ _id: file._id });
+      await mongoose.connection.db
+        .collection("fs.chunks")
+        .deleteMany({ files_id: file._id });
     }
-    await gfs.files.deleteOne({ _id: file._id });
-    await mongoose.connection.db
-      .collection("fs.chunks")
-      .deleteMany({ files_id: file._id });
     return response.status(200).json({ msg: "deleted" });
   } catch (error) {
     return response.status(500).json({ msg: error.message });
